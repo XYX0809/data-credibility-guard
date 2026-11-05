@@ -44,6 +44,14 @@ python -m venv .venv
 .venv\Scripts\python -m src.engine.scorer --clean data/normal_signed.jsonl --target data/polluted_ts.jsonl
 ```
 
+## 大屏演示（11 月验收）
+
+```bash
+.venv\Scripts\python tools\demo_nov.py
+```
+
+浏览器自动打开 http://127.0.0.1:5000 —— 液态玻璃风格实时评分大屏：正常流高分平稳，污染流入后曲线实时下跌，破 60 变红阻断并进入告警列表。前端 ECharts/Socket.IO 已本地化，断网可用。
+
 ## 目录结构
 
 见 `启动方案-2026.11.md` §2（八模块：数据源模拟 / 污染模拟 / 特征提取 / 校验引擎 / 靶子AI / 阻断告警 / 审计取证 / 可解释输出）
