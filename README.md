@@ -20,12 +20,20 @@ python -m venv .venv
 .venv\Scripts\python -m pytest tests -q
 ```
 
-## 生成样例数据
+## 生成样例数据与污染注入
 
 ```bash
 .venv\Scripts\python -m src.datasource.generator --count 500 --out data/normal.jsonl
 .venv\Scripts\python -m src.engine.hmac_layer sign data/normal.jsonl data/normal_signed.jsonl
 .venv\Scripts\python -m src.engine.hmac_layer verify data/normal_signed.jsonl
+```
+
+```bash
+.venv\Scripts\python -m src.pollution.timestamp_tamper --mode rollback --ratio 0.2 --out data/polluted_ts.jsonl
+```
+
+```bash
+.venv\Scripts\python -m src.pollution.log_deletion --mode block --ratio 0.2 --out data/polluted_del.jsonl
 ```
 
 ## 目录结构
