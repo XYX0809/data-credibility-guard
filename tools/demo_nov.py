@@ -8,17 +8,17 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.alert.app import run_dashboard
-from src.datasource.generator import generate_normal_events
+from src.datasource.collector import captured_hosts, load_base_events
 from src.engine.hmac_layer import load_or_create_key, sign
 from src.engine.scorer import CredibilityEngine
 from src.pollution.timestamp_tamper import inject_timestamp_tamper
 
 
 def make_round():
-    """每轮重建引擎与数据（同种子可复现），供循环回放。"""
+    """每轮用真实采集日志重建引擎与数据（污染注入仍由注入器完成）。"""
     key = load_or_create_key()
-    events = [sign(e.to_dict(), key) for e in generate_normal_events(400)]
-    engine = CredibilityEngine.train(events[:100], key=key)
+    events = [sign(e, key) for e in load_base_events(400)]
+    engine = CredibilityEngine.train(events[:100], key=key, whitelist=captured_hosts())
     clean = events[100:250]
     polluted = inject_timestamp_tamper(
         events[250:400], mode="rollback", ratio=0.5, seed=1

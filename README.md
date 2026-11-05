@@ -14,6 +14,14 @@ python -m venv .venv
 
 离线（赛期断网）：双击运行 `install_offline.bat`（依赖 `wheels/` 目录，随环境版本重新下载）
 
+## 采集真实数据（必做第一步）
+
+```bash
+.venv\Scripts\python -m src.datasource.collector
+```
+
+采集本机真实 Windows 事件日志（System/Application/Security）与性能指标 → `data/real/base.jsonl`。**正式链路（引擎训练/评测/大屏/取证）一律使用真实采集日志**；生成器仅保留做污染注入实验。
+
 ## 运行测试
 
 ```bash

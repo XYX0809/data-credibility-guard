@@ -8,7 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.datasource.generator import generate_normal_events
+from src.datasource.collector import captured_hosts, load_base_events
 from src.engine.hmac_layer import load_or_create_key, sign
 from src.engine.scorer import CredibilityEngine
 from src.forensics.ledger import AuditSink, fetch_summary, verify_chain
@@ -27,8 +27,8 @@ def main() -> None:
         db.unlink()
 
     key = load_or_create_key()
-    stream = [sign(e.to_dict(), key) for e in generate_normal_events(400)]
-    engine = CredibilityEngine.train(stream[:150], key=key)
+    stream = [sign(e, key) for e in load_base_events(400)]
+    engine = CredibilityEngine.train(stream[:150], key=key, whitelist=captured_hosts())
     batch = inject_timestamp_tamper(stream[150:350], mode="rollback", ratio=0.3, seed=1).events
 
     sink = AuditSink(db, async_mode=True)

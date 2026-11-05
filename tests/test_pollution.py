@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from src.datasource.generator import generate_normal_events
+from src.datasource.generator import METRIC_RANGES, generate_normal_events
 from src.engine.hmac_layer import sign, verify
 from src.features.extractor import HOST_NAME_RE, FeatureExtractor
 from src.pollution.log_deletion import inject_log_deletion
@@ -244,5 +244,7 @@ def test_mask_makes_benign_and_stale_hmac(events):
     for e in res.events:
         if e["event_id"] in bad:
             m = e["metrics"]
-            assert m["cpu"] <= 32.0 and m["conn_count"] <= 150.0  # 抹平到低位温和区间
+            # 抹平到量程低位 5%-30% 的温和区间
+            assert m["cpu"] <= METRIC_RANGES["cpu"][1] * 0.35
+            assert m["conn_count"] <= METRIC_RANGES["conn_count"][1] * 0.35
             assert not verify(e, KEY)  # 伪装破坏签名，HMAC 抓得住

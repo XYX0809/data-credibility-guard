@@ -3,7 +3,7 @@ import copy
 
 import pytest
 
-from src.datasource.generator import generate_normal_events
+from src.datasource.generator import METRIC_RANGES, generate_normal_events
 from src.engine.hmac_layer import sign
 from src.features.extractor import (
     FEATURE_NAMES,
@@ -116,9 +116,8 @@ def test_noise_zigzag_elevated(signed):
     for i, base in enumerate(signed[:6]):
         event = copy.deepcopy(base)
         event["metrics"] = {
-            "cpu": 5.0 if i % 2 == 0 else 95.0,
-            "mem": 20.0 if i % 2 == 0 else 90.0,
-            "conn_count": 1.0 if i % 2 == 0 else 500.0,
+            k: (lo + 0.5 if i % 2 == 0 else hi - 0.5)
+            for k, (lo, hi) in METRIC_RANGES.items()
         }
         rows.append(ext.observe(event))
     assert rows[-1]["numeric_noise_level"] > 0.8

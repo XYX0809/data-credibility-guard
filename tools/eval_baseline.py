@@ -17,7 +17,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.datasource.generator import generate_normal_events
+from src.datasource.collector import captured_hosts, load_base_events
 from src.engine.hmac_layer import load_or_create_key, sign
 from src.engine.scorer import CredibilityEngine
 from src.features.extractor import FeatureExtractor
@@ -99,9 +99,9 @@ def evaluate_case(train, clean_eval, batch, truth_ids, key) -> dict:
     # B0：全放行
     result["B0"] = (0.0, 0.0, 0.0, 0.0)
 
-    # B1：特征 + 阈值规则
+    # B1：特征 + 阈值规则（主机名口径同已定规则：白名单内视为规范）
     t0 = time.perf_counter()
-    ext = FeatureExtractor(key=key)
+    ext = FeatureExtractor(key=key, whitelist=captured_hosts())
     feats = ext.extract_all(combined)
     b1_lat = (time.perf_counter() - t0) * 1000.0 / max(len(combined), 1)
     flags = [rule_flag_b1(f) for f in feats]
@@ -110,7 +110,7 @@ def evaluate_case(train, clean_eval, batch, truth_ids, key) -> dict:
     result["B1"] = (det, fpr_clean, b1_lat, b1_lat)
 
     # B2：三层完整方案
-    engine = CredibilityEngine.train(train, key=key)
+    engine = CredibilityEngine.train(train, key=key, whitelist=captured_hosts())
     lat_ms = []
     flags = []
     for e in combined:
@@ -126,9 +126,8 @@ def evaluate_case(train, clean_eval, batch, truth_ids, key) -> dict:
 
 def run_eval(seed: int = 42, ratio: float = POLLUTE_RATIO) -> tuple[str, dict]:
     key = load_or_create_key()
-    stream = [sign(e.to_dict(), key) for e in generate_normal_events(
-        TRAIN_COUNT + CLEAN_COUNT + BATCH_COUNT, seed=seed
-    )]
+    # 基础数据 = 真实采集日志；seed 只决定污染注入的可复现性
+    stream = [sign(e, key) for e in load_base_events(TRAIN_COUNT + CLEAN_COUNT + BATCH_COUNT)]
     train = stream[:TRAIN_COUNT]
     clean_eval = stream[TRAIN_COUNT:TRAIN_COUNT + CLEAN_COUNT]
     base = stream[TRAIN_COUNT + CLEAN_COUNT:]

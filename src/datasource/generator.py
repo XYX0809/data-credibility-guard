@@ -13,7 +13,8 @@ from src.datasource.schema import EVENT_TYPES, LogEvent
 HOST_POOL = ("lab-pc-01", "lab-pc-02", "srv-web-01", "srv-db-01", "ops-term-03")
 USER_POOL = ("alice", "bob", "carol", "dave", "svc_backup")
 IP_PREFIX = "10.20.1."
-METRIC_RANGES = {"cpu": (5.0, 95.0), "mem": (20.0, 90.0), "conn_count": (1.0, 500.0)}
+# 指标物理量程（真实采集值域）：越界 = 物理上不可能的读数
+METRIC_RANGES = {"cpu": (0.0, 100.0), "mem": (0.0, 100.0), "conn_count": (0.0, 2000.0)}
 
 
 def generate_normal_events(
