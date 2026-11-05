@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>审计取证报告</title>
+<style>
+  body { font-family: "Microsoft YaHei", system-ui, sans-serif; color: #1a2433;
+         margin: 40px auto; max-width: 980px; padding: 0 20px; }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  .meta { color: #64748b; font-size: 13px; margin-bottom: 24px; }
+  .cards { display: flex; gap: 14px; flex-wrap: wrap; margin: 18px 0; }
+  .card { border: 1px solid #dbe3ee; border-radius: 10px; padding: 14px 18px; min-width: 150px; }
+  .card .n { font-size: 26px; font-weight: 650; }
+  .card .l { font-size: 12px; color: #64748b; letter-spacing: .08em; margin-top: 2px; }
+  .ok { color: #0f8a4d; } .bad { color: #d02f3c; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; margin-top: 10px; }
+  th, td { border: 1px solid #e2e8f2; padding: 7px 10px; text-align: left; }
+  th { background: #f3f6fb; font-weight: 600; }
+  h2 { font-size: 16px; margin: 30px 0 6px; }
+  .note { background: #f6f9fe; border: 1px solid #dbe7fb; border-radius: 8px;
+          padding: 12px 16px; font-size: 13px; color: #334; margin-top: 10px; }
+  footer { margin-top: 36px; color: #94a3b8; font-size: 12px; border-top: 1px solid #e2e8f2;
+           padding-top: 12px; }
+</style>
+</head>
+<body>
+  <h1>面向安全决策AI的数据可信度验证系统 · 审计取证报告</h1>
+  <div class="meta">
+    生成时间：{{ generated_at }}　|　数据库：{{ db_name }}　|　事件窗口：{{ totals.window_from }} ~ {{ totals.window_to }}
+  </div>
+
+  <div class="cards">
+    <div class="card"><div class="n">{{ totals.total }}</div><div class="l">审计记录</div></div>
+    <div class="card"><div class="n">{{ totals.blocked }}</div><div class="l">阻断事件</div></div>
+    <div class="card"><div class="n">{{ totals.vetoed }}</div><div class="l">否决事件</div></div>
+    <div class="card">
+      <div class="n {{ 'ok' if chain.ok else 'bad' }}">{{ "完整" if chain.ok else "断裂" }}</div>
+      <div class="l">证据链校验</div>
+    </div>
+  </div>
+
+  <h2>规则命中统计</h2>
+  {% if totals.hits %}
+  <table>
+    <tr><th>规则</th><th>命中次数</th></tr>
+    {% for name, count in totals.hits.items() %}
+    <tr><td>{{ name }}</td><td>{{ count }}</td></tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p>无规则命中。</p>
+  {% endif %}
+
+  <h2>阻断事件证据（{{ rows|length }} 条）</h2>
+  {% if rows %}
+  <table>
+    <tr><th>记录</th><th>事件ID</th><th>序号</th><th>事件时间</th><th>可信分</th><th>命中规则</th><th>否决</th></tr>
+    {% for r in rows %}
+    <tr>
+      <td>{{ r.id }}</td><td>{{ r.event_id }}</td><td>{{ r.seq_no }}</td>
+      <td>{{ r.event_ts }}</td><td>{{ r.score }}</td>
+      <td>{{ r.rule_hits | join(" / ") }}</td><td>{{ "是" if r.veto else "否" }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p>无阻断事件。</p>
+  {% endif %}
+
+  <h2>证据链</h2>
+  <div class="note">
+    每条审计记录包含「前条哈希 + 本条哈希」，任何修改或删除都会导致链条校验失败并定位断点。<br>
+    本次校验：已检查 <b>{{ chain.checked }}</b> 条 ——
+    {% if chain.ok %}
+    <b class="ok">哈希链完整，记录未被篡改</b>。
+    {% else %}
+    <b class="bad">哈希链断裂</b>，首个异常记录 id = {{ chain.broken_at_id }}，该记录（或其前驱）已被改动。
+    {% endif %}
+  </div>
+
+  <footer>
+    本报告由系统自动生成。可信分口径：0.4×HMAC + 0.4×统计 + 0.2×规则，阈值 60 阻断，否决压至 30，硬规则拉底 45。
+  </footer>
+</body>
+</html>
