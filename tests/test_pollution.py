@@ -6,7 +6,10 @@ import pytest
 
 from src.datasource.generator import generate_normal_events
 from src.engine.hmac_layer import sign, verify
+from src.features.extractor import HOST_NAME_RE, FeatureExtractor
 from src.pollution.log_deletion import inject_log_deletion
+from src.pollution.noise_injection import inject_noise
+from src.pollution.source_forgery import inject_source_forgery
 from src.pollution.timestamp_tamper import inject_timestamp_tamper
 
 KEY = b"test-secret"
@@ -144,3 +147,90 @@ def test_hmac_catches_tamper_but_not_deletion(events):
     bad = set(tampered.affected_event_ids)
     for e in tampered.events:
         assert verify(e, KEY) == (e["event_id"] not in bad), "篡改事件必须被 HMAC 拦下"
+
+
+# ---------- 来源伪造 ----------
+
+
+def test_forgery_ratio_zero_noop(events):
+    res = inject_source_forgery(events, ratio=0)
+    assert res.events == events
+    assert res.affected_event_ids == []
+
+
+def test_rename_host_flags_naming_and_consistency(events):
+    res = inject_source_forgery(events, mode="rename_host", ratio=0.3, seed=1)
+    rows = FeatureExtractor(key=KEY).extract_all(res.events)
+    bad = set(res.affected_event_ids)
+    assert bad
+    for e, f in zip(res.events, rows):
+        if e["event_id"] in bad:
+            assert not HOST_NAME_RE.match(e["host"])
+            assert f["host_naming_compliance"] == 0.0
+            assert f["source_consistency"] == 0.0
+
+
+def test_forge_source_only_consistency(events):
+    res = inject_source_forgery(events, mode="forge_source", ratio=0.3, seed=2)
+    rows = FeatureExtractor(key=KEY).extract_all(res.events)
+    bad = set(res.affected_event_ids)
+    assert bad
+    for e, f in zip(res.events, rows):
+        if e["event_id"] in bad:
+            assert f["host_naming_compliance"] == 1.0
+            assert f["source_consistency"] == 0.0
+
+
+def test_impersonate_looks_compliant_but_hmac_fails(events):
+    signed = [sign(e, KEY) for e in events]
+    res = inject_source_forgery(signed, mode="impersonate", ratio=0.3, seed=3)
+    rows = FeatureExtractor(key=KEY).extract_all(res.events)
+    bad = set(res.affected_event_ids)
+    assert bad
+    for e, f in zip(res.events, rows):
+        if e["event_id"] in bad:
+            assert f["host_naming_compliance"] == 1.0
+            assert f["source_consistency"] == 1.0
+            assert f["hmac_status"] == 0.0  # 冒充外观合规，只有 HMAC 抓得住
+
+
+def test_forgery_breaks_hmac(events):
+    signed = [sign(e, KEY) for e in events]
+    res = inject_source_forgery(signed, mode="rename_host", ratio=0.2, seed=4)
+    bad = set(res.affected_event_ids)
+    for e in res.events:
+        assert verify(e, KEY) == (e["event_id"] not in bad)
+
+
+# ---------- 噪声注入 ----------
+
+
+def test_spike_out_of_range(events):
+    res = inject_noise(events, mode="spike", ratio=0.2, seed=1)
+    rows = FeatureExtractor(key=KEY).extract_all(res.events)
+    bad = set(res.affected_event_ids)
+    assert len(bad) == 20
+    for e, f in zip(res.events, rows):
+        if e["event_id"] in bad:
+            assert f["range_violation_ratio"] == 1.0
+
+
+def test_jitter_raises_noise_feature(events):
+    res = inject_noise(events, mode="jitter", ratio=0.5, seed=2)
+    rows = FeatureExtractor(key=KEY).extract_all(res.events)
+    clean_rows = FeatureExtractor(key=KEY).extract_all(events)
+    jitter_mean = sum(f["numeric_noise_level"] for f in rows) / len(rows)
+    clean_mean = sum(f["numeric_noise_level"] for f in clean_rows) / len(clean_rows)
+    assert jitter_mean > clean_mean + 0.15
+    assert max(f["numeric_noise_level"] for f in rows) > 0.5
+
+
+def test_noise_deterministic_and_input_not_mutated(events):
+    snapshot = copy.deepcopy(events)
+    a = inject_noise(events, mode="spike", ratio=0.4, seed=5)
+    b = inject_noise(events, mode="spike", ratio=0.4, seed=5)
+    c = inject_source_forgery(events, mode="rename_host", ratio=0.4, seed=5)
+    assert a.events == b.events
+    assert a.affected_event_ids == b.affected_event_ids
+    assert events == snapshot
+    assert c.events is not events

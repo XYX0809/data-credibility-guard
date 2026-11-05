@@ -37,6 +37,14 @@ python -m venv .venv
 ```
 
 ```bash
+.venv\Scripts\python -m src.pollution.source_forgery --mode rename_host --ratio 0.2 --out data/polluted_src.jsonl
+```
+
+```bash
+.venv\Scripts\python -m src.pollution.noise_injection --mode spike --ratio 0.2 --out data/polluted_noise.jsonl
+```
+
+```bash
 .venv\Scripts\python -m src.features.extractor --in data/polluted_ts.jsonl --out data/features.jsonl
 ```
 
