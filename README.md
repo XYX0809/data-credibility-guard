@@ -36,6 +36,10 @@ python -m venv .venv
 .venv\Scripts\python -m src.pollution.log_deletion --mode block --ratio 0.2 --out data/polluted_del.jsonl
 ```
 
+```bash
+.venv\Scripts\python -m src.features.extractor --in data/polluted_ts.jsonl --out data/features.jsonl
+```
+
 ## 目录结构
 
 见 `启动方案-2026.11.md` §2（八模块：数据源模拟 / 污染模拟 / 特征提取 / 校验引擎 / 靶子AI / 阻断告警 / 审计取证 / 可解释输出）
