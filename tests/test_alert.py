@@ -25,6 +25,7 @@ def test_feed_payload_contract():
     for p in payloads:
         assert set(PAYLOAD_KEYS) <= set(p)
         assert 0 <= p["score"] <= 100
+        assert p["host"] and p["source_id"]
 
 
 def test_feed_blocks_polluted():

@@ -12,6 +12,8 @@ OnEmit = Callable[[str, dict], None]
 PAYLOAD_KEYS = (
     "event_id",
     "seq_no",
+    "host",
+    "source_id",
     "score",
     "blocked",
     "veto",
@@ -27,6 +29,8 @@ def result_payload(event: dict, result: ScoreResult) -> dict:
     return {
         "event_id": result.event_id,
         "seq_no": event.get("seq_no"),
+        "host": event.get("host"),
+        "source_id": event.get("source_id"),
         "score": round(result.score, 1),
         "blocked": result.blocked,
         "veto": result.veto,

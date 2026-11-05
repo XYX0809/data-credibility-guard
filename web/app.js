@@ -138,6 +138,7 @@ setInterval(() => {
   const last = pending[pending.length - 1];
   for (const p of pending) {
     total += 1;
+    window.StarMap?.update(p);
     seriesData.push({
       value: [total, p.score],
       itemStyle: { color: p.blocked ? DANGER : ACCENT },
@@ -146,6 +147,7 @@ setInterval(() => {
   pending = [];
   document.getElementById("n-total").textContent = total;
   chart.setOption({ series: [{ data: seriesData }] });
+  window.StarMap?.render();
   updateExplain(last);
 }, 200);
 
@@ -163,6 +165,7 @@ socket.on("round", () => {
   pending = [];
   total = 0;
   blockedCount = 0;
+  window.StarMap?.reset();
   document.getElementById("n-total").textContent = "0";
   document.getElementById("n-block").textContent = "0";
   document.getElementById("block-list").innerHTML =
@@ -204,3 +207,22 @@ socket.on("feed_done", () => {
   const text = phaseEl.textContent.replace("当前阶段：", "");
   if (!text.endsWith("· 演示完成")) phaseEl.textContent = text + " · 演示完成";
 });
+
+/* ---------- 视图切换：评分曲线 / 态势星图 ---------- */
+function setView(view) {
+  const curveCard = document.getElementById("chart-card");
+  const starCard = document.getElementById("star-card");
+  const isStar = view === "star";
+  curveCard.style.display = isStar ? "none" : "block";
+  starCard.style.display = isStar ? "block" : "none";
+  document.getElementById("btn-view-curve").classList.toggle("active", !isStar);
+  document.getElementById("btn-view-star").classList.toggle("active", isStar);
+  const shown = isStar ? starCard : curveCard;
+  shown.classList.remove("view-in");
+  void shown.offsetWidth;
+  shown.classList.add("view-in");
+  if (isStar) window.StarMap?.resize();
+  else chart.resize();
+}
+document.getElementById("btn-view-curve").addEventListener("click", () => setView("curve"));
+document.getElementById("btn-view-star").addEventListener("click", () => setView("star"));
