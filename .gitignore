@@ -8,3 +8,8 @@ data/*
 !data/.gitkeep
 wheels/
 *.log
+
+# 策略文档仅本地保留，不入公开仓
+code.txt
+启动方案-2026.11.md
+星图方案-可信态势.md
