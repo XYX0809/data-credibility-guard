@@ -64,6 +64,12 @@ def test_combine_scores_veto_caps_at_30():
     assert blocked
 
 
+def test_combine_scores_rule_floor_pulls_down():
+    score, blocked = combine_scores(100, 100, 30, veto=False, rule_floor=45.0)
+    assert score == pytest.approx(45.0)
+    assert blocked
+
+
 def test_combine_scores_threshold_boundary():
     _, blocked = combine_scores(100, 50, 100, veto=False)  # 80 分
     assert not blocked
@@ -162,7 +168,7 @@ def test_deletion_gap_boundary_blocked(engine, stream):
     assert boundary_seq == max(deleted_seqs) + 1
 
     assert boundary.blocked
-    assert "seq_gap_large" in boundary.rule_hits
+    assert "seq_gap" in boundary.rule_hits
     assert sum(1 for r in results if r.blocked) <= 3
 
 

@@ -2,6 +2,7 @@
 
 score = 0.4×S_hmac + 0.4×S_stat + 0.2×S_rule   （clamp 0-100，高=可信）
 否决项（HMAC 校验失败 / 规则升级否决）→ score = min(score, 30)
+硬规则命中（格式崩坏 / seq 缺口）→ 拉底 score = min(score, 45)
 score < 60 → 阻断
 
 三层贡献（s_hmac/s_stat/s_rule）随结果输出，直接喂模块⑧可解释条形图。
@@ -23,6 +24,8 @@ WEIGHT_HMAC = 0.4
 WEIGHT_STAT = 0.4
 WEIGHT_RULE = 0.2
 VETO_CAP = 30.0
+RULE_FLOOR_SCORE = 45.0
+HARD_RULES = frozenset({"format_broken", "seq_gap"})
 
 
 @dataclass
@@ -45,10 +48,13 @@ def combine_scores(
     *,
     veto: bool,
     threshold: float = SCORE_THRESHOLD,
+    rule_floor: float | None = None,
 ) -> tuple[float, bool]:
-    """合成三层分数 → (score, blocked)。"""
+    """合成三层分数 → (score, blocked)。rule_floor 给定时命中硬规则拉底。"""
     raw = WEIGHT_HMAC * s_hmac + WEIGHT_STAT * s_stat + WEIGHT_RULE * s_rule
     score = min(raw, VETO_CAP) if veto else raw
+    if rule_floor is not None:
+        score = min(score, rule_floor)
     score = max(0.0, min(100.0, score))
     return score, score < threshold
 
@@ -90,8 +96,14 @@ class CredibilityEngine:
         s_stat = self._stat.score(features_to_vector(feats))
         rules = evaluate_rules(feats)
         veto = rules.veto or feats["hmac_status"] < 1.0
+        hard_hit = not HARD_RULES.isdisjoint(rules.hits)
         score, blocked = combine_scores(
-            s_hmac, s_stat, rules.score, veto=veto, threshold=self._threshold
+            s_hmac,
+            s_stat,
+            rules.score,
+            veto=veto,
+            threshold=self._threshold,
+            rule_floor=RULE_FLOOR_SCORE if hard_hit else None,
         )
         return ScoreResult(
             event_id=str(event.get("event_id", "")),

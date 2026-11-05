@@ -12,7 +12,6 @@ HMAC_FLOOR = 10.0
 FORMAT_FLOOR = 20.0
 SEQ_GAP_FLOOR = 30.0
 FORMAT_BAD = 0.6
-SEQ_GAP_LARGE = 0.5
 
 
 @dataclass
@@ -38,9 +37,10 @@ def evaluate_rules(
         score = min(score, FORMAT_FLOOR)
         hits.append("format_broken")
         other_hit = True
-    if features["seq_gap_ratio"] >= SEQ_GAP_LARGE:
+    # 本系统 seq_no 严格连续：出现任何缺口即视为日志删除痕迹
+    if features["seq_gap_ratio"] > 0.0:
         score = min(score, SEQ_GAP_FLOOR)
-        hits.append("seq_gap_large")
+        hits.append("seq_gap")
         other_hit = True
 
     veto = False
