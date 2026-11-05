@@ -14,7 +14,7 @@ from config.settings import DATA_DIR, RANDOM_STATE
 from src.datasource.generator import METRIC_RANGES, load_jsonl, save_jsonl
 from src.pollution.common import PollutionResult
 
-MODES = ("jitter", "spike")
+MODES = ("jitter", "spike", "mask")
 
 
 def inject_noise(
@@ -28,6 +28,7 @@ def inject_noise(
 
     - jitter: 数值在合法区间两端交替锯齿（高频噪声，区间内不越界）
     - spike : 数值直接打出合法区间 3-8 倍（越界尖峰）
+    - mask  : 数值抹平成低位温和读数（对抗伪装：把攻击特征藏起来骗 AI）
     """
     if mode not in MODES:
         raise ValueError(f"mode 必须是 {MODES} 之一，收到 {mode!r}")
@@ -48,8 +49,11 @@ def inject_noise(
                 continue
             if mode == "jitter":
                 metrics[key] = round(lo + 0.5 if seq % 2 == 0 else hi - 0.5, 2)
-            else:  # spike
+            elif mode == "spike":
                 metrics[key] = round(hi * rng.uniform(3, 8), 2)
+            else:  # mask：抹平成低位温和读数
+                width = hi - lo
+                metrics[key] = round(lo + rng.uniform(0.05, 0.3) * width, 2)
 
     affected = [
         noisy[i]["event_id"] for i in range(len(noisy)) if noisy[i] != events[i]

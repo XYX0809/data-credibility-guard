@@ -68,6 +68,14 @@ python -m venv .venv
 
 同一污染集出四类污染的检出率/误报率对照表 + 时延实测，报告写入 `data/eval_baseline_report.md`。
 
+## 名场面演示（排位赛两幕）
+
+```bash
+.venv\Scripts\python tools\demo_scene.py
+```
+
+第一幕：威胁读数被抹平，靶子 AI（RandomForest）自信输出错误决策；第二幕：同批污染被验证层全部拦截，AI 恢复正确。
+
 ## 目录结构
 
 见 `启动方案-2026.11.md` §2（八模块：数据源模拟 / 污染模拟 / 特征提取 / 校验引擎 / 靶子AI / 阻断告警 / 审计取证 / 可解释输出）

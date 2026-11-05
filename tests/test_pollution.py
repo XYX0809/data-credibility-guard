@@ -234,3 +234,15 @@ def test_noise_deterministic_and_input_not_mutated(events):
     assert a.affected_event_ids == b.affected_event_ids
     assert events == snapshot
     assert c.events is not events
+
+
+def test_mask_makes_benign_and_stale_hmac(events):
+    signed = [sign(e, KEY) for e in events]
+    res = inject_noise(signed, mode="mask", ratio=0.3, seed=6)
+    bad = set(res.affected_event_ids)
+    assert bad
+    for e in res.events:
+        if e["event_id"] in bad:
+            m = e["metrics"]
+            assert m["cpu"] <= 32.0 and m["conn_count"] <= 150.0  # 抹平到低位温和区间
+            assert not verify(e, KEY)  # 伪装破坏签名，HMAC 抓得住
