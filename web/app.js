@@ -63,6 +63,69 @@ const option = {
 chart.setOption(option);
 window.addEventListener("resize", () => chart.resize());
 
+/* ---------- 可解释输出：三层风险 + 12 特征可疑度 ---------- */
+const EXPLAIN_LABELS = [
+  "HMAC完整性", "时序乱序", "时间偏移", "序列缺口", "主机名规范", "来源一致",
+  "格式合规", "字段缺失", "数值噪声", "数值越界", "频率异常", "基线偏离",
+];
+const EXPLAIN_KEYS = [
+  "hmac_status", "ts_monotonic_violation", "ts_skew", "seq_gap_ratio",
+  "host_naming_compliance", "source_consistency", "format_compliance",
+  "missing_field_ratio", "numeric_noise_level", "range_violation_ratio",
+  "event_rate_anomaly", "baseline_deviation",
+];
+const explainChart = echarts.init(document.getElementById("explain-chart"));
+explainChart.setOption({
+  animation: false,
+  grid: { left: 86, right: 36, top: 4, bottom: 4 },
+  tooltip: {
+    trigger: "item",
+    backgroundColor: "rgba(16, 28, 44, 0.92)",
+    borderColor: "rgba(255, 255, 255, 0.14)",
+    textStyle: { color: "#eaf2ff", fontSize: 12 },
+    valueFormatter: (v) => `${(v * 100).toFixed(0)}%`,
+  },
+  xAxis: { type: "value", min: 0, max: 1, show: false },
+  yAxis: {
+    type: "category", inverse: true, data: EXPLAIN_LABELS,
+    axisLabel: { color: "#9db3cf", fontSize: 11 },
+    axisLine: { show: false }, axisTick: { show: false },
+  },
+  series: [{
+    type: "bar", barWidth: 9, data: [],
+    itemStyle: { borderRadius: 5 },
+    label: {
+      show: true, position: "right", fontSize: 10, color: "#9db3cf",
+      formatter: (p) => `${(p.value * 100).toFixed(0)}%`,
+    },
+  }],
+});
+window.addEventListener("resize", () => explainChart.resize());
+
+function updateExplain(p) {
+  const sus = p.suspicions || {};
+  const data = EXPLAIN_KEYS.map((k) => {
+    const v = sus[k] ?? 0;
+    return {
+      value: v,
+      itemStyle: { color: v >= 0.5 ? DANGER : ACCENT },
+    };
+  });
+  explainChart.setOption({ series: [{ data }] });
+
+  const layers = [
+    ["hmac", 100 - p.s_hmac],
+    ["stat", 100 - p.s_stat],
+    ["rule", 100 - p.s_rule],
+  ];
+  for (const [name, risk] of layers) {
+    const fill = document.getElementById(`lay-${name}`);
+    fill.style.width = `${risk}%`;
+    fill.classList.toggle("danger", risk >= 50);
+    document.getElementById(`lay-${name}-v`).textContent = `${risk.toFixed(0)}%`;
+  }
+}
+
 const socket = io();
 let total = 0;
 let blockedCount = 0;
@@ -72,6 +135,7 @@ const phaseEl = document.getElementById("phase");
 /* 图表 200ms 批量刷新一次，避免逐点重绘闪烁 */
 setInterval(() => {
   if (!pending.length) return;
+  const last = pending[pending.length - 1];
   for (const p of pending) {
     total += 1;
     seriesData.push({
@@ -82,6 +146,7 @@ setInterval(() => {
   pending = [];
   document.getElementById("n-total").textContent = total;
   chart.setOption({ series: [{ data: seriesData }] });
+  updateExplain(last);
 }, 200);
 
 socket.on("connect", () => {
@@ -119,6 +184,7 @@ socket.on("score", (p) => {
 socket.on("block", (p) => {
   blockedCount += 1;
   document.getElementById("n-block").textContent = blockedCount;
+  updateExplain(p);
   const list = document.getElementById("block-list");
   const hint = list.querySelector(".empty");
   if (hint) hint.remove();

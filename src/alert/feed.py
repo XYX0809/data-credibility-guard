@@ -5,6 +5,7 @@ import time
 from typing import Callable
 
 from src.engine.scorer import CredibilityEngine, ScoreResult
+from src.explain.profile import suspicion_profile
 
 OnEmit = Callable[[str, dict], None]
 
@@ -18,6 +19,7 @@ PAYLOAD_KEYS = (
     "s_hmac",
     "s_stat",
     "s_rule",
+    "suspicions",
 )
 
 
@@ -32,6 +34,7 @@ def result_payload(event: dict, result: ScoreResult) -> dict:
         "s_hmac": round(result.s_hmac, 1),
         "s_stat": round(result.s_stat, 1),
         "s_rule": round(result.s_rule, 1),
+        "suspicions": {k: round(v, 3) for k, v in suspicion_profile(result.features).items()},
     }
 
 
