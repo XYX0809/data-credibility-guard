@@ -1,7 +1,9 @@
 # 数据可信度验证系统（data-credibility-guard）
 
 面向安全决策 AI 的"免疫系统"：在 AI 决策前验证输入数据可信度，拦截数据投毒。
-全本地部署、断网可用。项目背景与指标见 `code.txt`，实施细节见 `启动方案-2026.11.md`。
+全本地部署、断网可用。
+
+**技术栈**：Python 3.13 · scikit-learn（IsolationForest）· HMAC-SHA256 · Flask + Socket.IO · ECharts 5.5（本地化）· SQLite 哈希链证据链
 
 ## 环境安装
 
